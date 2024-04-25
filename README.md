@@ -1,14 +1,14 @@
 # ImplantDataProcess
 
-基于nnU-Net图像分割的口腔下颌后牙种植方案规划课题 - 数据处理代码
+基于深度学习图像分割的口腔下颌后牙种植方案规划课题 - 数据处理代码
 
-## 代码简述
+## Code Introduce
 
 1. get_dicom 读取dicom文件
 2. get_pcd 读取pcd文件
 3. get_stl 读取stl文件
 4. get_cylinder_param 获取圆柱体参数
-5. dataset_split 用于手动划分数据集
+5. dataset_split 用于划分数据集
 6. train_to_nii 将训练集原始图像转化为nii文件
 7. val_to_nii 将验证集原始图像转化为nii文件
 8. test_to_nii 将测试集原始图像转化为nii文件
