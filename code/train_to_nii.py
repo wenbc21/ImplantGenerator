@@ -49,7 +49,7 @@ def train_to_nii(params) :
             midy_part = (midy + randomy - half_patch, midy + randomy + half_patch)
             midz_part = (midz + randomz - half_patch, midz + randomz + half_patch)
             dicom_part = dicom[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
-            pcd_part = dicom[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
+            pcd_part = pcd[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
             
             # random flip for [x,y,z] axis
             random_flip = random.randint(0, 3)
