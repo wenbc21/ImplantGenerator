@@ -45,7 +45,7 @@ def test_to_nii(params) :
         midy_part = (midy - half_patch, midy + half_patch)
         midz_part = (midz - half_patch, midz + half_patch)
         dicom_part = dicom[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
-        pcd_part = dicom[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
+        pcd_part = pcd[midx_part[0]:midx_part[1], midy_part[0]:midy_part[1], midz_part[0]:midz_part[1]]
         
         # write images
         dicom_part = sitk.GetImageFromArray(dicom_part)
