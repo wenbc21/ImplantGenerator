@@ -8,27 +8,6 @@ from get_pcd import *
 import pydicom
 import json
 
-def scan_path(path) :
-    dirs = []
-    files = []
-
-    for item in os.scandir(path):
-        if item.is_dir():
-          dirs.append(item.path)
-
-        elif item.is_file():
-          files.append(item.path)
-          
-    return dirs, files
-
-def get_mid(pcd) :
-    
-    cylinder = np.array(np.where(pcd == 1))
-    midx = (np.min(cylinder[0]) + np.max(cylinder[0])) // 2
-    midy = (np.min(cylinder[1]) + np.max(cylinder[1])) // 2
-    midz = (np.min(cylinder[2]) + np.max(cylinder[2])) // 2
-    
-    return midx, midy, midz
 
 def rebuild_dicom(params) :
 
