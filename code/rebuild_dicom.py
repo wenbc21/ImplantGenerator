@@ -1,6 +1,6 @@
 import SimpleITK as sitk
 import os
-import cv2
+import argparse
 import numpy as np
 from get_dicom import *
 from get_stl import *
@@ -9,24 +9,35 @@ import pydicom
 import json
 
 
-def rebuild_dicom(params) :
+def get_args_parser():
+    parser = argparse.ArgumentParser('Rebuild dicom files from nnU-Net results', add_help=False)
+    parser.add_argument('--dicom_path', type=str, default="./data/data/01_mimics/")
+    parser.add_argument('--mid_path', type=str, default="./data/data/labeled_midpoint")
+    parser.add_argument('--split_path', type=str, default='./data/data/splits.json')
+    parser.add_argument('--implant_path', type=str, default='./data/ImplantDataProcess/post_2')
+    parser.add_argument('--target_path', type=str, default='./data/data_trans/postprocessed_2')
 
-    # 文件路径
-    dicom_dirs = [item.path for item in os.scandir(params['dicom_path']) if item.is_dir()]
-    mid_dirs = [item.path for item in os.scandir(params['mid_path']) if item.is_file()]
-    implant_dirs = [item.path for item in os.scandir(params['implant_path']) if item.is_file()]
+    return parser
+
+
+def rebuild_dicom(args) :
+
+    # read raw data
+    dicom_dirs = [item.path for item in os.scandir(args.dicom_path) if item.is_dir()]
+    mid_dirs = [item.path for item in os.scandir(args.mid_path) if item.is_file()]
+    implant_dirs = [item.path for item in os.scandir(args.implant_path) if item.is_file()]
     dicom_dirs.sort()
     mid_dirs.sort()
     implant_dirs.sort()
 
-    with open(params['split_path']) as f:
+    # assort dataset base on random generated split file
+    with open(args.split_path) as f:
         test_split = [int(i)-1 for i in json.load(f)['test']]
     dicom_dirs = [dicom_dirs[i] for i in test_split]
-
     assert len(dicom_dirs) == len(implant_dirs) and len(dicom_dirs) == len(mid_dirs), "dicom files not compatible with nii files!"
     
+    # rebuild dicom file for each item
     for it in range(len(dicom_dirs)) :
-
         # get dicom file and implant file
         dicom_dir = list([item.path for item in os.scandir(dicom_dirs[it]) if item.is_dir()])[0]
         dicom_slice = [item.path for item in os.scandir(dicom_dir) if item.is_file()]
@@ -36,7 +47,7 @@ def rebuild_dicom(params) :
         implant = sitk.GetArrayFromImage(implant)
         implant = np.array(np.where(implant == 1))
 
-        # read dicom
+        # read original dicom
         dicom = get_dcm_3d_array(dicom_dir)
         dicom_size = dicom.shape
         dicom = np.zeros(dicom_size, dtype = np.int16)
@@ -67,25 +78,19 @@ def rebuild_dicom(params) :
         dicom = dicom[::-1, :, :]
         
         # write dicom file
-        os.makedirs(params['target_path'], exist_ok=True)
-        os.makedirs(f"{params['target_path']}/rebuild_dicom/{str(it+1).zfill(3)}", exist_ok=True)
+        os.makedirs(args.target_path, exist_ok=True)
+        os.makedirs(f"{args.target_path}/rebuild_dicom/{str(it+1).zfill(3)}", exist_ok=True)
         for i in range(dicom_size[0]) :
             data = pydicom.dcmread(dicom_slice[i])
             data.pixel_array.data = dicom[i]
             data.PixelData = dicom[i].tobytes()
-            data.save_as(f"{params['target_path']}/rebuild_dicom/{str(it+1).zfill(3)}/predict_{str(i).zfill(3)}.dcm")
+            data.save_as(f"{args.target_path}/rebuild_dicom/{str(it+1).zfill(3)}/predict_{str(i).zfill(3)}.dcm")
         
         print(f"{str(it+1).zfill(3)} done!")
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser('Rebuild dicom files from nnU-Net results', parents=[get_args_parser()])
+    args = parser.parse_args()
 
-    params = {
-        'dicom_path' : './data/data/01_mimics/',
-        'mid_path' : './data/data/labeled_midpoint',
-        'implant_path' : './data/ImplantDataProcess/post_2',
-        'split_path' : "./data/data/splits.json",
-        'target_path' : "./data/data_trans/postprocessed_2"
-    }
-
-    rebuild_dicom(params)
+    rebuild_dicom(args)

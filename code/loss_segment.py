@@ -6,12 +6,10 @@ import surface_distance as surdist
 
 
 if __name__ == '__main__':
-        
-    # label_path = './data/nii/labeled/label'
-    # predict_path = './dataset/nnUNet_raw/Dataset737_Implant/labelsTs'
-    label_path = './data/nii/labeled/label'
-    predict_path = './best_test'
     
+    # get predict and groundtruth   
+    label_path = './data/nii/labeled/label'
+    predict_path = './dataset/nnUNet_raw/Dataset737_Implant/labelsTs'    
     label_dirs = [item.path for item in os.scandir(label_path) if item.is_file()]
     predict_dirs = [item.path for item in os.scandir(predict_path) if item.is_file()]
     label_dirs.sort()
@@ -27,15 +25,15 @@ if __name__ == '__main__':
     print("                 dice      IOU      95%HD      ASD      surIOU      surDice")
         
     for it in range(len(label_dirs)) :
-        
+        # get files
         label_dir = label_dirs[it]
         predict_dir = predict_dirs[it]
-        
         label = sitk.ReadImage(label_dir)
         label = sitk.GetArrayFromImage(label)
         predict = sitk.ReadImage(predict_dir)
         predict = sitk.GetArrayFromImage(predict)
         
+        # calculate segmentation loss of cylinder
         dice = dc(predict, label)
         HD95 = hd95(predict, label, 0.3)
         ASD = asd(predict, label, 0.3)
@@ -46,6 +44,7 @@ if __name__ == '__main__':
         suriou = np.average(surdist.compute_surface_overlap_at_tolerance(surdistance, 1))
         surdice = surdist.compute_surface_dice_at_tolerance(surdistance, 1)
 
+        # record and save
         dice_list.append(dice)
         hd95_list.append(HD95)
         asd_list.append(ASD)

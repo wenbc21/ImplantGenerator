@@ -1,22 +1,19 @@
 # ImplantDataProcess
 
-基于深度学习图像分割的口腔下颌后牙种植方案规划
+The repository of thesis Automatic Planning of Implant Surgery for Mandibular Posterior Teeth based on Deep Learning
 
-Automatic Planning of Implant Surgery for Mandibular Posterior Teeth based on Deep Learning
+## How to use
 
-## Code Introduce
+1. Run [dataset_split](code/dataset_split.py) to make a random split of the dataset
+2. Run [train_to_nii](code/train_to_nii.py), [val_to_nii](code/val_to_nii.py), [test_to_nii](code/test_to_nii.py) to preprocess data (transform raw CBCT and implant data into nii.gz format)
+3. Install [nnU-Net](https://github.com/MIC-DKFZ/nnUNet) to train a model and inference on the test set
+4. Run [loss_segment](code/loss_segment.py) and [loss_spacial](code/loss_spacial.py) to calculate metrics for the results
+5. (Optional) Run [fit_cylinder](code/fit_cylinder.py) to get a standard cylinder
+6. Run [rebuild_nii](code/rebuild_nii.py) and [rebuild_dicom](code/rebuild_dicom.py) to rebuild augmented images for doctor usage
 
-1. get_dicom 读取dicom文件
-2. get_pcd 读取pcd文件
-3. get_stl 读取stl文件
-4. get_cylinder_param 获取圆柱体参数
-5. dataset_split 用于划分数据集
-6. train_to_nii 将训练集原始图像转化为nii文件
-7. val_to_nii 将验证集原始图像转化为nii文件
-8. test_to_nii 将测试集原始图像转化为nii文件
-9. loss_segment 评价分割性能
-10. loss_spacial 评价空间形态
-11. fit_cylinder 拟合标准圆柱体
-12. nii_to_image 将nii转为二维图像
-13. rebuild_nii 将输出重建为nii图像
-14. rebuild_dicom 将输出重建为dicom图像
+## Other files
+Other than these, you may check out: 
+[get_dicom](code/get_dicom.py) for reading dicom images, 
+[get_pcd](code/get_pcd.py) for reading point cloud format implants, 
+[get_stl](code/get_stl.py) for reading stl format implants (which is not done yet), 
+[nii_to_image](code/nii_to_image.py) to view a nii image at any time to check your intermediate result.

@@ -4,16 +4,13 @@ from get_dicom import *
 from get_stl import *
 from get_pcd import *
 from get_cylinder_param import *
-import pandas as pd
     
 
 if __name__ == '__main__':
     
-    # 文件路径
-    # label_path = './data/nii/labeled/label'
-    # predict_path = './dataset/nnUNet_raw/Dataset737_Implant/labelsTs'
+    # get predict and groundtruth
     label_path = './data/nii/labeled/label'
-    predict_path = './best_test'
+    predict_path = './dataset/nnUNet_raw/Dataset737_Implant/labelsTs'
     label_dirs = [item.path for item in os.scandir(label_path) if item.is_file()]
     predict_dirs = [item.path for item in os.scandir(predict_path) if item.is_file()]
     label_dirs.sort()
@@ -25,27 +22,26 @@ if __name__ == '__main__':
     print(" diameter    length  inplant_position    endpoint_position   angle   implant_lateral1    implant_lateral2    endpoint_lateral1   endpoint_lateral2   implant_depth   endpoint_depth")
     
     for it in range(len(label_dirs)) :
-        
+        # get files
         label_dir = label_dirs[it]
         predict_dir = predict_dirs[it]
-        
         label = sitk.ReadImage(label_dir)
         label = sitk.GetArrayFromImage(label)
         predict = sitk.ReadImage(predict_dir)
         predict = sitk.GetArrayFromImage(predict)
         
-        # 计算圆柱体参数 p表示predict l表示label
+        # compute cylinder parameters for predict and groundtruth
         center_p, direction_p, radius_p, length_p = get_cylinder_param(predict[::-1, :, :])
         center_g, direction_g, radius_g, length_g = get_cylinder_param(label[::-1, :, :])
         
-        # 计算上下底面圆心
+        # get centers of the top and bottom faces
         upper_center_p = center_p + length_p * direction_p * 0.5 / 0.3
         bottom_center_p = center_p - length_p * direction_p * 0.5 / 0.3
         upper_center_g = center_g + length_g * direction_g * 0.5 / 0.3
         bottom_center_g = center_g - length_g * direction_g * 0.5 / 0.3
         assert upper_center_g[0] > bottom_center_g[0] or upper_center_p[0] > bottom_center_p[0], "wrong cylinder shape!"
         
-        # 计算临床指标
+        # calculate spacial loss of cylinder
         diameter = radius_p * 2 - radius_g * 2
         length = length_p - length_g
         inplant_position = np.linalg.norm(upper_center_p - upper_center_g) * 0.3
@@ -58,6 +54,7 @@ if __name__ == '__main__':
         implant_depth = (upper_center_p[0] - upper_center_g[0]) * 0.3
         endpoint_depth = (bottom_center_p[0] - bottom_center_g[0]) * 0.3
         
+        # record and save
         spacial_loss_list = [
             diameter, 
             length, 

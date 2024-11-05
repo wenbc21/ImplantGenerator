@@ -54,21 +54,3 @@ def get_dicom(dir_path) :
     # height, depth, width = dcm_3d_array.shape
     
     return dcm_3d_array
-
-
-# 测试
-if __name__ == '__main__' :
-
-    # 对应CBCT图像路径
-    dir_path = 'mandibular_tooth_implant/001 张研/001_张研_19861111_DICOM'
-    # dir_path = '001-020cbct_crop/001'
-
-    # # 获取一个dcm文件并转化为numpy array
-    # dicom_slice = sitk.ReadImage(file_path)
-    
-    # 获取CBCT图像所有slice并转化为numpy三维矩阵，分别是横断面从上往下、冠状面从前往后、矢状面从左往右
-    dcm_3d_array = get_dcm_3d_array(dir_path)
-    
-    # 根据窗位调整
-    dcm_3d_array = window_transform_3d(dcm_3d_array, window_width=4000, window_center=1000)
-    print(np.min(dcm_3d_array), np.max(dcm_3d_array))
