@@ -4,7 +4,7 @@ import os
 import cv2
 from get_dicom import *
 
-def stl_to_voxel_array_with_fill(stl_file_path, dicom_size,voxel_size=0.3):
+def get_stl(stl_file_path, dicom_size,voxel_size=0.3):
     """
     将 STL 文件转化为三维稠密体素网格并完成表面填充和内部填充。
     Args:
@@ -28,9 +28,9 @@ def stl_to_voxel_array_with_fill(stl_file_path, dicom_size,voxel_size=0.3):
     transformed_points = []
     for point in filled_cylinder:
         transformed_point = np.array([
-            dicom_size[0] * 0.5 - point[2] / voxel_size,
+            dicom_size[0] * 0.5 + point[2] / voxel_size,
             dicom_size[1] * 0.5 + point[1] / voxel_size,
-            dicom_size[2] * 0.5 - point[0] / voxel_size
+            dicom_size[2] * 0.5 + point[0] / voxel_size
         ])
         transformed_points.append(transformed_point)
 
@@ -42,9 +42,9 @@ def stl_to_voxel_array_with_fill(stl_file_path, dicom_size,voxel_size=0.3):
     # 初始化稠密体素网格
     stl_3d_array = np.zeros(dicom_size, dtype=np.uint8)
     for voxel in voxel_coords:
-        stl_3d_array[voxel[0], voxel[1], voxel[2]] = 255
+        stl_3d_array[voxel[0], voxel[1], voxel[2]] = 1
     # 获取非零点的边界
-    x, y, z = np.where(stl_3d_array == 255)
+    x, y, z = np.where(stl_3d_array == 1)
     xmin, xmax = x.min(), x.max()
     ymin, ymax = y.min(), y.max()
     zmin, zmax = z.min(), z.max()
@@ -52,21 +52,21 @@ def stl_to_voxel_array_with_fill(stl_file_path, dicom_size,voxel_size=0.3):
     # 内部填充逻辑
     for x in range(xmin, xmax + 1):  # 遍历 x 轴范围内的每一个体素列
         for y in range(ymin, ymax + 1):  # 对每个 x 值，遍历 y 轴范围内的每一个体素列
-            z_vals = np.where(stl_3d_array[x, y, :] == 255)[0]  # 找出在 (x, y) 平面上 z 轴方向上被填充为 1 的体素索引
+            z_vals = np.where(stl_3d_array[x, y, :] == 1)[0]  # 找出在 (x, y) 平面上 z 轴方向上被填充为 1 的体素索引
             if len(z_vals) > 1:  # 如果在该列中，z 轴方向有多个被填充为 1 的体素
-                stl_3d_array[x, y, z_vals[0]:z_vals[-1] + 1] = 255  # 将 z 轴方向上从第一个到最后一个索引之间的体素全部填充为 1
+                stl_3d_array[x, y, z_vals[0]:z_vals[-1] + 1] = 1  # 将 z 轴方向上从第一个到最后一个索引之间的体素全部填充为 1
 
     for x in range(xmin, xmax + 1):
         for z in range(zmin, zmax + 1):
-            y_vals = np.where(stl_3d_array[x, :, z] == 255)[0]
+            y_vals = np.where(stl_3d_array[x, :, z] == 1)[0]
             if len(y_vals) > 1:
-                stl_3d_array[x, y_vals[0]:y_vals[-1] + 1, z] = 255
+                stl_3d_array[x, y_vals[0]:y_vals[-1] + 1, z] = 1
 
     for z in range(zmin, zmax + 1):
         for y in range(ymin, ymax + 1):
-            x_vals = np.where(stl_3d_array[:, y, z] == 255)[0]
+            x_vals = np.where(stl_3d_array[:, y, z] == 1)[0]
             if len(x_vals) > 1:
-                stl_3d_array[x_vals[0]:x_vals[-1] + 1, y, z] = 255
+                stl_3d_array[x_vals[0]:x_vals[-1] + 1, y, z] = 1
 
     return stl_3d_array
 
