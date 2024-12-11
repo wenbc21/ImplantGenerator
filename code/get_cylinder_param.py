@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 from get_dicom import *
 from get_stl import *
-from get_pcd import *
 import open3d as o3d
 import copy
 import pandas as pd

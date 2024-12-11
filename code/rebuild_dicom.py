@@ -4,7 +4,6 @@ import argparse
 import numpy as np
 from get_dicom import *
 from get_stl import *
-from get_pcd import *
 import pydicom
 import json
 

@@ -12,7 +12,6 @@ def get_dcm_3d_array(dicom_dir) :
     # print("Image size:", size[0], size[1], size[2], type(image)) # height, depth, width
     dcm_3d_array = sitk.GetArrayFromImage(image)
     # print(dcm_3d_array.shape, dcm_3d_array.dtype)
-    dcm_3d_array = dcm_3d_array[::-1, :, :]
     return dcm_3d_array
 
 # 将单张CBCT图像根据窗位和窗宽进行转换

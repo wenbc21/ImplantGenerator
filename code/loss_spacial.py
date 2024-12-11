@@ -2,7 +2,6 @@ import SimpleITK as sitk
 import numpy as np
 from get_dicom import *
 from get_stl import *
-from get_pcd import *
 from get_cylinder_param import *
     
 
