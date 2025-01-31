@@ -12,17 +12,14 @@ from skimage.transform import rescale
 
 def get_args_parser():
     parser = argparse.ArgumentParser('', add_help=False)
-    parser.add_argument('--data_path', type=str, default='datasets/cbct_stl')
-    parser.add_argument('--augment_size', type=int, default=10)
-    parser.add_argument('--displacement', type=int, default=16)
-    parser.add_argument('--patch_size', type=int, default=96)
+    parser.add_argument('--data_path', type=str, default='datasets/data')
     parser.add_argument('--random_seed', type=int, default=21)
-    parser.add_argument('--results_path', type=str, default='results')
+    parser.add_argument('--results_path', type=str, default='datasets/region_datasets')
 
     return parser
 
 
-def train_to_nii(args) :
+def make_dataset(args) :
 
     data_path = [item.path for item in os.scandir(args.data_path) if item.is_dir()]
     data_path.sort()
@@ -66,12 +63,12 @@ def train_to_nii(args) :
         implant_part = np.round(implant_part).astype(np.uint8)
         print(it+1, dicom.shape, dicom_part.shape, os.path.split(dicom_dir)[-1])
         
-        os.makedirs(os.path.join(args.results_path, "roi_slices", str(it+1).zfill(4)), exist_ok=True)
+        os.makedirs(os.path.join(args.results_path, "dicom_slices", str(it+1).zfill(4)), exist_ok=True)
         os.makedirs(os.path.join(args.results_path, "implant_slices", str(it+1).zfill(4)), exist_ok=True)
         for i in range(dicom_part.shape[0]) :
             cross_sec_img = dicom_part[i, :, :]  # 从三维矩阵中找出横断面切片
             cross_sec_img = cross_sec_img.astype("uint8")  # 转换类型
-            cv2.imwrite(os.path.join(args.results_path, "roi_slices", str(it+1).zfill(4), f"cross_section_{i}.png"), cross_sec_img)  # 保存横断面
+            cv2.imwrite(os.path.join(args.results_path, "dicom_slices", str(it+1).zfill(4), f"cross_section_{i}.png"), cross_sec_img)  # 保存横断面
             
             cross_sec_img = implant_part[i, :, :]  # 从三维矩阵中找出横断面切片
             cross_sec_img = cross_sec_img.astype("uint8")  # 转换类型
@@ -95,4 +92,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('', parents=[get_args_parser()])
     args = parser.parse_args()
 
-    train_to_nii(args)
+    make_dataset(args)

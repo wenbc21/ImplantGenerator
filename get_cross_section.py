@@ -7,7 +7,6 @@ from get_dicom import window_transform_3d
 def get_cross_section(dicom, if_vis, number, results_path) :
     dcm_3d_array = window_transform_3d(dicom, window_width=1700, window_center=1500).astype(np.uint8)
 
-
     # Maximum Intensity Projection
     mip_img = np.max(dcm_3d_array, axis=2)
     mip_img[mip_img != 255] = 0

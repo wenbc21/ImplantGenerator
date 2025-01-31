@@ -5,9 +5,9 @@ import numpy as np
 
 if __name__ == '__main__':
 
-    label_path = './../../nnUNet/dataset/nnUNet_raw/Dataset747_ROIUF/labelsTs'
-    image_path = './../../nnUNet/dataset/nnUNet_raw/Dataset747_ROIUF/imagesTs'
-    predict_path = './../../nnUNet/dataset/nnUNet_raw/Dataset747_ROIUF/predict'
+    label_path = 'datasets/region_datasets/labelsTs'
+    image_path = 'datasets/region_datasets/imagesTs'
+    predict_path = 'datasets/region_datasets/predict'
 
     # read raw data
     label_dirs = [item.path for item in os.scandir(label_path) if item.is_file()]
