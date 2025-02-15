@@ -1,9 +1,4 @@
-# ImplantDataProcess
-
-The official repository of my bachelor thesis 
-```
-Automatic Planning of Implant Surgery for Mandibular Posterior Teeth based on Deep Learning
-```
+# ImplantGenerator
 
 ## How to use
 
