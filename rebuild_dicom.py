@@ -63,16 +63,6 @@ def rebuild_dicom(args) :
         predict[2] += (midz - 48)
         predict = predict.T
 
-
-        # # get dicom file and implant file
-        # dicom_dir = list([item.path for item in os.scandir(dicom_dirs[it]) if item.is_dir()])[0]
-        # dicom_slice = [item.path for item in os.scandir(dicom_dir) if item.is_file()]
-        # dicom_slice.sort()
-        # dicom_slice = dicom_slice[:-1]
-        # implant = sitk.ReadImage(implant_dirs[it])
-        # implant = sitk.GetArrayFromImage(implant)
-        # implant = np.array(np.where(implant == 1))
-
         # read original dicom
         dicom = get_dcm_3d_array(dicom_dir)
         dicom_size = dicom.shape
@@ -83,19 +73,6 @@ def rebuild_dicom(args) :
             image_np = np.frombuffer(databytes, dtype=np.int16).reshape(dicom_size[1:])
             dicom[i] = image_np
         dicom = dicom[::-1, :, :]
-
-        # # get labeled mid point
-        # with open(mid_dirs[it]) as f:
-        #     mid = json.load(f)
-        # midx = dicom.shape[0] - mid['midx']
-        # midy = mid['midz']
-        # midz = mid['midy']
-
-        # # space transfer
-        # implant[0] += (midx - 48)
-        # implant[1] += (midy - 48)
-        # implant[2] += (midz - 48)
-        # implant = implant.T
         
         # rebuild dicom
         max_dicom = np.max(dicom)
