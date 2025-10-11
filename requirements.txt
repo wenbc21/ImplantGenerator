@@ -1,0 +1,12 @@
+monai==1.3.2
+simpleitk==2.4.0
+opencv-python
+scikit-image
+tensorboard
+pydicom
+numpy
+numpy-stl
+medpy
+surface_distance
+tabulate
+tqdm

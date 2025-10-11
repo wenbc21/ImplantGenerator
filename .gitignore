@@ -1,0 +1,5 @@
+ImplantData/data/*.dcm
+ImplantData/data/*.stl
+ImplantData/datasets
+**/__pycache__/*
+results/*
