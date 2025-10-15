@@ -46,10 +46,11 @@ def image_rebuild(args) :
             window_dict[id] = float(row['Window'])
             width_dict[id] = float(row['Width'])
     
-    os.makedirs(os.path.join(args.results_path, "rebuild_nii"), exist_ok=True)
-    os.makedirs(os.path.join(args.results_path, "rebuild_dicom"), exist_ok=True)
+    rebuild_path = os.path.join(args.results_path, "rebuild")
+    os.makedirs(os.path.join(rebuild_path, "rebuild_nii"), exist_ok=True)
+    os.makedirs(os.path.join(rebuild_path, "rebuild_dicom"), exist_ok=True)
     
-    for it in range(22, len(predict_path)) :
+    for it in range(len(predict_path)) :
         # get dicom file and pcd file
         data_name = os.path.basename(predict_path[it]).split('.')[0]
         data_id = data_name[-3:]
@@ -66,10 +67,10 @@ def image_rebuild(args) :
         predict = sitk.GetArrayFromImage(predict)
 
         # nii will be translated by window size and width
-        rebuild_nii(dicom, predict, centroid, patch_size, data_name, args.results_path)
+        rebuild_nii(dicom, predict, centroid, patch_size, data_name, rebuild_path)
 
         # dicom retain the original values
-        rebuild_dicom(dicom_dir, predict, centroid, patch_size, data_name, args.results_path)
+        rebuild_dicom(dicom_dir, predict, centroid, patch_size, data_name, rebuild_path)
 
         gc.collect()
         print(f"{data_name} Done!")
