@@ -11,7 +11,6 @@ def get_args_parser():
     parser.add_argument('--results_dir', type=str, default='results')
     parser.add_argument('--dataset_dir', type=str, default='ImplantData/datasets/ImplantGeneration/UpperAnterior')
     parser.add_argument('--task', type=str, default='ImplantGeneration_UpperAnterior')
-    parser.add_argument('--location_path', type=str, default='results/ImplantLocation_UpperAnterior/location.json')
 
     return parser
 
@@ -31,9 +30,9 @@ def main(args) :
     )
     engine.load_state_dict(os.path.join(args.results_dir, "weight", "best.pt"))
     
-    if "Generation" in args.task and args.location_path is not None:
+    if "Generation" in args.task :
         test_ds = get_implant_dataset(data_dir=args.dataset_dir, is_train=False)
-        engine.inference_generation(test_dataset=test_ds, location_path=args.location_path)
+        engine.inference_generation(test_dataset=test_ds)
     elif "Location" in args.task :
         test_ds = get_location_dataset(data_dir=args.dataset_dir, is_train=False)
         engine.inference_location(test_dataset=test_ds)

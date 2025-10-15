@@ -78,8 +78,8 @@ def get_implant_dataset(data_dir, cache=True, is_train=True):
             print("Data", os.path.basename(all_labels[i]), "not in any split.")
             exit()
 
-    all_images = sorted(glob.glob(f"{data_dir}/imagesTs/*.nii.gz"))
-    all_labels =  sorted(glob.glob(f"{data_dir}/labelsTs/*.nii.gz"))
+    all_images = sorted(glob.glob(f"{data_dir}/imagesInfer/*.nii.gz"))
+    all_labels =  sorted(glob.glob(f"{data_dir}/labelsInfer/*.nii.gz"))
     test_files = [[all_images[i], all_labels[i]] for i in range(len(all_images))]
 
     train_transform = transforms.Compose([

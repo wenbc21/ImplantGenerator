@@ -23,7 +23,7 @@ class Engine:
         batch_size: int = 2,
         val_every: int = 5,
         results_dir: str = "./results",
-        lr: float = 5e-5,
+        lr: float = 2e-4,
         weight_decay: float = 1e-3,
         num_workers: int = 4,
         amp: bool = False,
@@ -44,7 +44,6 @@ class Engine:
         self.optimizer = AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         # I/O
-        self.results_dir = results_dir
         self.log_dir = os.path.join(results_dir, "log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.weight_dir = os.path.join(results_dir, "weight")
@@ -148,21 +147,14 @@ class Engine:
 
 
     @torch.no_grad()
-    def inference_generation(self, test_dataset, location_path):
+    def inference_generation(self, test_dataset):
         test_loader = DataLoader(test_dataset, shuffle=False, batch_size=1, num_workers=self.num_workers, drop_last=False)
         self.model.eval()
 
         dice_all = 0.0
 
-        with open(location_path, 'r') as file:
-            location = json.load(file)
-
         for step, batch in enumerate(test_loader):
             images, labels, infos = self._extract_batch_tensors(batch)
-            
-            c = np.array(location[infos['name'][0]]).astype(int)
-            images = images[:, :, c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
-            labels = labels[:, :, c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
 
             preds = self.model(images)
             dice = self._dice_coefficient(preds, labels)
@@ -171,11 +163,7 @@ class Engine:
 
             save_output = torch.sigmoid(preds).cpu().numpy()[0][0]
             save_output = sitk.GetImageFromArray(save_output.astype(np.uint8))
-            images = sitk.GetImageFromArray(images.cpu().numpy()[0][0])
-            labels = sitk.GetImageFromArray(labels.cpu().numpy()[0][0].astype(np.uint8))
             sitk.WriteImage(save_output, f"{self.predict_dir}/{infos['name'][0]}.nii.gz")
-            sitk.WriteImage(images, f"{self.predict_dir}/{infos['name'][0]}_images.nii.gz")
-            sitk.WriteImage(labels, f"{self.predict_dir}/{infos['name'][0]}_labels.nii.gz")
 
             print(f"[test {infos['name'][0]}] dice={dice:.4f}")
 
@@ -220,7 +208,7 @@ class Engine:
         mean_dice = dice_all / len(test_loader)
         print(f"Average dice={mean_dice:.4f}")
 
-        with open(os.path.join(self.results_dir, "location.json"), 'w', encoding='utf-8') as sf:
+        with open(os.path.join(os.path.dirname(self.predict_dir), "location.json"), 'w', encoding='utf-8') as sf:
             json.dump(centroids, sf, indent=4)
 
 
