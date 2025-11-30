@@ -25,7 +25,7 @@ def main(args) :
         predict = sitk.ReadImage(predict_path[it])
         predict = sitk.GetArrayFromImage(predict)
 
-        center, direction, radius, length = get_cylinder_param(predict)
+        center, direction, radius, length = get_cylinder_param(predict, approx=True)
         standard_cylinder = cylinder_render(center, predict.shape[0], direction, length/0.3, radius/0.3)
 
         standard_cylinder = sitk.GetImageFromArray(standard_cylinder)

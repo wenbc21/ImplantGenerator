@@ -92,7 +92,7 @@ def get_segmentation_metrics(label, predict, spacing=0.3):
 
 def get_spatial_metrics(label, predict):
     # compute cylinder parameters for predict and groundtruth
-    center_p, direction_p, radius_p, length_p = get_cylinder_param(predict)
+    center_p, direction_p, radius_p, length_p = get_cylinder_param(predict, approx=True)
     center_g, direction_g, radius_g, length_g = get_cylinder_param(label)
     
     # get centers of the top and bottom faces

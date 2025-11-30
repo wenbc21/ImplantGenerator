@@ -26,7 +26,6 @@ def window_transform_2d(dcm_2d_array, window_width, window_center, normal=False)
 
 
 def window_transform_3d(dcm_3d_array, window_width, window_center, low_slice_num=0, high_slice_num=0, normal=False) :
-    
     if(high_slice_num == 0):
         high_slice_num = len(dcm_3d_array)
     new_dcm_3d_array = np.zeros_like(dcm_3d_array)
@@ -106,7 +105,7 @@ def cylinder_render(center, image_size, direction, length, radius):
     return implant_part
 
 
-def get_cylinder_param(cylinder_voxel) :
+def get_cylinder_param(cylinder_voxel, approx=False) :
     # get cylinder point locations
     cylinder = np.array(np.where(cylinder_voxel == 1), dtype=float).T
     
@@ -120,12 +119,12 @@ def get_cylinder_param(cylinder_voxel) :
     relative_vectors = cylinder - center
     cross_products = np.cross(relative_vectors, direction)
     distances = np.linalg.norm(cross_products, axis=1)
-    radius = np.percentile(distances, 90) - 0.25
+    radius = np.percentile(distances, 90) - 0.25 if approx else np.max(distances)
     
     # get length
     projection = np.dot(cylinder - center, direction)
     distances = np.abs(projection)
-    length = np.percentile(distances, 95) * 2 + 1
+    length = np.percentile(distances, 95) * 2 + 1 if approx else np.max(distances) * 2
     
     return center, direction, radius*0.3, length*0.3
 
