@@ -1,7 +1,8 @@
 import SimpleITK as sitk
 import numpy as np
 from scipy import ndimage
-from stl import mesh
+import trimesh
+import stl
 import cv2
 import copy
 
@@ -37,59 +38,108 @@ def window_transform_3d(dcm_3d_array, window_width, window_center, low_slice_num
 
 
 def get_stl(stl_path):
-    cylinder_mesh = mesh.Mesh.from_file(stl_path)
-        
+    mesh = trimesh.load(stl_path)
+    components = mesh.split()
+
+    cylinder_mesh = stl.mesh.Mesh.from_file(stl_path)
     all_v = cylinder_mesh.points.reshape((-1, 3))
     uni_v, c_v = np.unique(all_v, axis=0, return_counts=True)
-    # print("data name", data_name)
-    # print("STL feat.", all_v.shape, "unique vert.", uni_v.shape, "max rep.", np.max(c_v), "min rep.", np.min(c_v))
-    
-    top_2_indices = np.argsort(c_v)[-2:]
-    circle_centers = uni_v[top_2_indices]
-    other_vertices = np.delete(uni_v, top_2_indices, axis=0)
-    
-    centroid = np.average(circle_centers, axis = 0)
-    if circle_centers[0][2] > circle_centers[1][2] :
-        upper_center = circle_centers[0]
-        lower_center = circle_centers[1]
-    else :
-        upper_center = circle_centers[1]
-        lower_center = circle_centers[0]
-    
-    dist_to_center1 = np.linalg.norm(other_vertices - upper_center, axis=1)
-    dist_to_center2 = np.linalg.norm(other_vertices - lower_center, axis=1)
-    
-    closer_to_center1 = dist_to_center1 < dist_to_center2
-    group1_indices = np.where(closer_to_center1)[0]
-    group2_indices = np.where(~closer_to_center1)[0]
-    
-    upper_vertices = other_vertices[group1_indices]
-    upper_distance = np.linalg.norm(upper_vertices - upper_center, axis=1)
-    lower_vertices = other_vertices[group2_indices]
-    lower_distance = np.linalg.norm(lower_vertices - lower_center, axis=1)
-    
-    radius = np.average(np.stack((upper_distance, lower_distance), axis=0))
-    length = np.linalg.norm(upper_center - lower_center, axis=0)
-    direction = (upper_center - lower_center) / length
 
-    return upper_center, lower_center, centroid, radius, length, direction
+    center_indices = np.argsort(c_v)[-2*len(components):]
+    circle_centers = uni_v[center_indices]
+    other_vertices = np.delete(uni_v, center_indices, axis=0)
+
+    # group all circle
+    distances = np.linalg.norm(other_vertices[:, np.newaxis] - circle_centers[np.newaxis, :], axis=2)
+    nearest_center_idx = np.argmin(distances, axis=1)
+
+    circles = []
+    for i in range(circle_centers.shape[0]):
+        center = circle_centers[i]
+        vertices = other_vertices[nearest_center_idx == i]
+        cov_matrix = np.cov((vertices - center).T)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
+        axis_idx = np.argmin(eigenvalues)
+        axis = eigenvectors[:, axis_idx]
+        circles.append({
+            "center": center,
+            "vertices": vertices,
+            "axis": axis
+        })
+
+    # pair circles into cylinder
+    for ci in range(len(circles)) :
+        distance = []
+        for cj in range(len(circles)) :
+            if ci == cj :
+                distance.append(np.inf)
+            else :
+                c = circles[ci]["center"]
+                a = circles[cj]["axis"] / np.linalg.norm(circles[cj]["axis"])
+                distance.append(np.linalg.norm(np.cross(c - circles[cj]["center"], a)))
+        circles[ci]["pair_idx"] = np.argmin(np.array(distance))
+
+    # easy check valid pairing
+    center_groups = []
+    added_groups = []
+    for ci in range(len(circles)) :
+        cj = circles[ci]["pair_idx"]
+        assert circles[cj]["pair_idx"] == ci, f"circle {ci} and {cj} not paired correctly"
+        if ci not in added_groups and cj not in added_groups :
+            center_groups.append({
+                "c0": circles[ci]["center"],
+                "e0": circles[ci]["vertices"],
+                "c1": circles[cj]["center"],
+                "e1": circles[cj]["vertices"],
+            })
+            added_groups.append(ci)
+            added_groups.append(cj)
+    
+    cylinders = []
+    for cg in center_groups:
+        centroid = (cg["c0"] + cg["c1"]) / 2
+        if cg["c0"][2] > cg["c1"][2] :
+            upper_center = cg["c0"]
+            lower_center = cg["c1"]
+            upper_distance = np.linalg.norm(cg["e0"] - upper_center, axis=1)
+            lower_distance = np.linalg.norm(cg["e1"] - lower_center, axis=1)
+        else :
+            upper_center = cg["c1"]
+            lower_center = cg["c0"]
+            upper_distance = np.linalg.norm(cg["e1"] - upper_center, axis=1)
+            lower_distance = np.linalg.norm(cg["e0"] - lower_center, axis=1)
+        
+        radius = np.average(np.stack((upper_distance, lower_distance), axis=0))
+        length = np.linalg.norm(upper_center - lower_center, axis=0)
+        direction = (upper_center - lower_center) / length
+
+        cylinders.append([
+            upper_center, lower_center, centroid, radius, length, direction
+        ])
+
+    return cylinders
 
 
-def cylinder_transform(cylinder_cfg, world_size, spacing) :
+def cylinder_transform(cylinders, world_size, spacing) :
     def transform_to_world(point, world_size, spacing) :
         return np.array([
             world_size[0] * 0.5 + point[2] / spacing,
             world_size[1] * 0.5 + point[1] / spacing,
             world_size[2] * 0.5 + point[0] / spacing
         ])
-    upper_center, lower_center, centroid, radius, length, direction = cylinder_cfg
-    upper_center_tr = transform_to_world(upper_center, world_size, spacing)
-    lower_center_tr = transform_to_world(lower_center, world_size, spacing)
-    centroid_tr = transform_to_world(centroid, world_size, spacing)
-    radius_tr = radius / spacing
-    length_tr = np.linalg.norm(upper_center_tr - lower_center_tr, axis=0)
-    direction_tr = (upper_center_tr - lower_center_tr) / length_tr
-    return upper_center_tr, lower_center_tr, centroid_tr, radius_tr, length_tr, direction_tr
+    cylinders_tr = []
+    for cylinder_cfg in cylinders :
+        upper_center, lower_center, centroid, radius, length, direction = cylinder_cfg
+        upper_center_tr = transform_to_world(upper_center, world_size, spacing)
+        lower_center_tr = transform_to_world(lower_center, world_size, spacing)
+        centroid_tr = transform_to_world(centroid, world_size, spacing)
+        radius_tr = radius / spacing
+        length_tr = np.linalg.norm(upper_center_tr - lower_center_tr, axis=0)
+        direction_tr = (upper_center_tr - lower_center_tr) / length_tr
+        cylinders_tr.append([
+            upper_center_tr, lower_center_tr, centroid_tr, radius_tr, length_tr, direction_tr
+        ])
+    return cylinders_tr
 
 
 def cylinder_render(center, image_size, direction, length, radius):
