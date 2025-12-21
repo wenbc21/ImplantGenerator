@@ -5,6 +5,42 @@ import trimesh
 import stl
 import cv2
 import copy
+import csv
+import random
+
+
+def get_dataset_metadata(data_path, dataset_name, random_seed):
+    with open(f'{data_path}/metadata.csv', mode='r', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        rows = list(reader)
+        metadata = {
+            row['ID'].zfill(3): {
+                'spacing': float(row['Spacing']),
+                'window': float(row['Window']),
+                'width': float(row['Width']),
+                'mip_window': float(row['MIPWindow']),
+                'mip_width': float(row['MIPWidth']),
+                'fdi': float(row['FDI']),
+            }
+            for row in rows
+        }
+        data_id = list(metadata.keys())
+
+        if 'isTest' in reader.fieldnames:
+            train_split = [row['ID'].zfill(3) for row in rows if row['isTest'] == "0"]
+            val_split = [row['ID'].zfill(3) for row in rows if row['isTest'] == "1"]
+        else:
+            random.seed(random_seed)
+            random.shuffle(data_id)
+            train_split = data_id[:round(0.8*len(data_id))]
+            val_split = data_id[round(0.8*len(data_id)):]
+        
+        splits_final = {
+            "train": [f"IMPLANT_{dataset_name}_{data_name}" for data_name in train_split], 
+            "val": [f"IMPLANT_{dataset_name}_{data_name}" for data_name in val_split], 
+        }
+
+        return metadata, train_split, val_split
 
 
 def get_dcm_3d_array(dicom_dir) :

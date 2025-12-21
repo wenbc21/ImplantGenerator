@@ -36,7 +36,6 @@ def evaluate(args):
     csv_file = os.path.join(os.path.dirname(args.results_path), 'evaluation_metrics.csv')
     with open(csv_file, mode='w', newline='') as file:
         writer = csv.writer(file)
-        # Write header
         writer.writerow(headers)
     
     for it in tqdm(range(len(label_dirs))):
