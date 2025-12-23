@@ -56,6 +56,7 @@ def make_dataset(args) :
             dicom = rescale(dicom, metadata[data_name]["spacing"] / args.spacing, order=1, preserve_range=True)
         dicom = window_transform_3d(dicom, metadata[data_name]["width"], metadata[data_name]["window"]).astype(np.uint8)
         
+        implant = np.zeros_like(dicom, dtype=np.uint8)
         cylinders = get_stl(stl_path)
         cylinders = cylinder_transform(
             cylinders, 
@@ -105,11 +106,11 @@ def make_dataset(args) :
             sitk.WriteImage(implant_part_img, os.path.join(results_path, f"labelsTr", f"{item_name}.nii.gz"))
             
             if is_test:
-                implant = cylinder_render(centroid, dicom.shape, direction, length, radius)
+                implant |= cylinder_render(centroid, dicom.shape, direction, length, radius)
                 dicom_img = sitk.GetImageFromArray(dicom)
                 implant_img = sitk.GetImageFromArray(implant)
-                sitk.WriteImage(dicom_img, os.path.join(results_path, f"imagesTs", f"{item_name}_0000.nii.gz"))
-                sitk.WriteImage(implant_img, os.path.join(results_path, f"labelsTs", f"{item_name}.nii.gz"))
+                sitk.WriteImage(dicom_img, os.path.join(results_path, f"imagesTs", f"IMPLANT_{dataset_name}_{data_name}_0000.nii.gz"))
+                sitk.WriteImage(implant_img, os.path.join(results_path, f"labelsTs", f"IMPLANT_{dataset_name}_{data_name}.nii.gz"))
                 splits_final["val"].append(item_name)
             else :
                 splits_final["train"].append(item_name)

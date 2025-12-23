@@ -1,9 +1,7 @@
 import os
 import numpy as np
 import argparse
-from tqdm import tqdm
 import SimpleITK as sitk
-from data_utils import *
 import json
 
 def get_args_parser():
@@ -26,23 +24,25 @@ def make_dataset(args):
     os.makedirs(os.path.join(args.dataset_dir, "imagesInfer"), exist_ok=True)
     os.makedirs(os.path.join(args.dataset_dir, "labelsInfer"), exist_ok=True)
     for it in range(len(images_ts)):
-        data_name = os.path.split(labels_ts[it])[-1].split('.')[0]
+        data_name = os.path.basename(labels_ts[it]).split('.')[0]
 
-        images = sitk.ReadImage(images_ts[it])
-        images = sitk.GetArrayFromImage(images)
-        labels = sitk.ReadImage(labels_ts[it])
-        labels = sitk.GetArrayFromImage(labels)
+        image = sitk.ReadImage(images_ts[it])
+        image = sitk.GetArrayFromImage(image)
+        label = sitk.ReadImage(labels_ts[it])
+        label = sitk.GetArrayFromImage(label)
 
-        c = np.array(location[data_name]).astype(int)
-        images = images[c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
-        labels = labels[c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
-        
-        images = sitk.GetImageFromArray(images)
-        labels = sitk.GetImageFromArray(labels)
-        sitk.WriteImage(images, os.path.join(args.dataset_dir, "imagesInfer", f"{data_name}_0000.nii.gz"))
-        sitk.WriteImage(labels, os.path.join(args.dataset_dir, "labelsInfer", f"{data_name}.nii.gz"))
+        centroids = location[data_name]
+        for i in range(len(centroids)) :
+            c = np.array(centroids[i]).astype(int)
+            image_roi = image[c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
+            label_roi = label[c[0]-48:c[0]+48, c[1]-48:c[1]+48, c[2]-48:c[2]+48]
+            
+            image_roi = sitk.GetImageFromArray(image_roi)
+            label_roi = sitk.GetImageFromArray(label_roi)
+            sitk.WriteImage(image_roi, os.path.join(args.dataset_dir, "imagesInfer", f"{data_name}_{i}_0000.nii.gz"))
+            sitk.WriteImage(label_roi, os.path.join(args.dataset_dir, "labelsInfer", f"{data_name}_{i}.nii.gz"))
 
-        print(data_name, "done")
+            print(f"{data_name}_{i}, image shape: {image.shape}, ROI: {c}")
 
 
 if __name__ == '__main__':

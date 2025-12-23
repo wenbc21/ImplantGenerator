@@ -90,9 +90,11 @@ def make_dataset(args) :
         if is_test:
             sitk.WriteImage(dicom_part_img, os.path.join(results_path, f"imagesTs", f"{item_name}_0000.nii.gz"))
             sitk.WriteImage(implant_part_img, os.path.join(results_path, f"labelsTs", f"{item_name}.nii.gz"))
+            splits_final["val"].append(item_name)
         else :
             sitk.WriteImage(dicom_part_img, os.path.join(results_path, f"imagesTr", f"{item_name}_0000.nii.gz"))
             sitk.WriteImage(implant_part_img, os.path.join(results_path, f"labelsTr", f"{item_name}.nii.gz"))
+            splits_final["train"].append(item_name)
         
         os.makedirs(os.path.join(results_path, "combine_slices", item_name), exist_ok=True)
         for i in range(dicom_part.shape[0]) :

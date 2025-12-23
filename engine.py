@@ -23,7 +23,7 @@ class Engine:
         batch_size: int = 2,
         val_every: int = 5,
         results_dir: str = "./results",
-        lr: float = 2e-4,
+        lr: float = 1e-4,
         weight_decay: float = 1e-3,
         num_workers: int = 4,
         amp: bool = False,
@@ -44,6 +44,7 @@ class Engine:
         self.optimizer = AdamW(self.model.parameters(), lr=lr, weight_decay=weight_decay)
 
         # I/O
+        self.results_dir = results_dir
         self.log_dir = os.path.join(results_dir, "log")
         os.makedirs(self.log_dir, exist_ok=True)
         self.weight_dir = os.path.join(results_dir, "weight")
@@ -158,7 +159,6 @@ class Engine:
 
             preds = self.model(images)
             dice = self._dice_coefficient(preds, labels)
-
             dice_all += dice.detach().item()
 
             save_output = torch.sigmoid(preds).cpu().numpy()[0][0]
@@ -177,6 +177,7 @@ class Engine:
         self.model.eval()
 
         dice_all = 0.0
+        dice_all_c = 0.0
         centroids = {}
 
         for step, batch in enumerate(test_loader):
@@ -184,31 +185,46 @@ class Engine:
 
             preds = self.model(images)
             dice = self._dice_coefficient(preds, labels)
-
             dice_all += dice.detach().item()
 
-            preds = torch.sigmoid(preds).cpu().numpy()[0][0]
-            preds = keep_largest_component(preds)
-            center, _, _, _ = get_cylinder_param(preds)
+            preds = (torch.sigmoid(preds) > 0.5).cpu().numpy()[0][0]
+            labeled, num_features = ndimage.label(preds)
             region = torch.cat((infos["region"])).numpy()
             data_name = infos['name'][0]
 
-            world_coord = [
-                center[0] * 2 + region[0],
-                center[1] * 2 + region[2],
-                center[2] * 2 + region[4],
-            ]
-            centroids[data_name] = world_coord
+            center_points = []
+            predict_area = []
+            all_pred_clean = torch.zeros_like(labels)
+            for label in range(1, num_features + 1):
+                region_sum = ndimage.sum(preds, labeled, label)
+                # TODO: Instead of region area only, we should also consider if the shape is alike to cylinder 
+                if region_sum > 200:
+                    all_pred_clean |= torch.from_numpy((labeled == label)).to(all_pred_clean.device)
+                    predict_area.append(region_sum)
+                    center_point = ndimage.center_of_mass(preds, labeled, label)
+                    center_points.append([
+                        center_point[0] * 2 + region[0],
+                        center_point[1] * 2 + region[2],
+                        center_point[2] * 2 + region[4],
+                    ])
+            
+            dice_c = self._dice_coefficient(all_pred_clean, labels)
+            dice_all_c += dice_c.detach().item()
 
-            save_output = sitk.GetImageFromArray(preds.astype(np.uint8))
+            centroids[data_name] = center_points
+            save_output = sitk.GetImageFromArray(all_pred_clean.astype(np.uint8))
             sitk.WriteImage(save_output, f"{self.predict_dir}/{data_name}.nii.gz")
 
-            print(f"[test {data_name}] dice={dice:.4f}")
+            print(
+                f"[test {data_name}] dice={dice:.4f}, dice_c={dice_c:.4f}, "
+                f"filter {len(predict_area)} areas from {num_features}: {predict_area}"
+            )
 
         mean_dice = dice_all / len(test_loader)
-        print(f"Average dice={mean_dice:.4f}")
+        mean_dice_c = dice_all_c / len(test_loader)
+        print(f"Average dice={mean_dice:.4f}, dice_c={mean_dice_c:.4f}")
 
-        with open(os.path.join(os.path.dirname(self.predict_dir), "location.json"), 'w', encoding='utf-8') as sf:
+        with open(os.path.join(self.results_dir, "location.json"), 'w', encoding='utf-8') as sf:
             json.dump(centroids, sf, indent=4)
 
 
