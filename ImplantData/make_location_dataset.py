@@ -32,7 +32,7 @@ def make_dataset(args) :
     dataset_name = args.task
     results_path = os.path.join(args.results_path, dataset_name)
 
-    metadata, train_split, val_split = get_dataset_metadata(args.data_path, dataset_name, args.random_seed)
+    metadata, train_split, val_split = get_dataset_metadata(args.data_path, args.random_seed)
     splits_final = {"train": [], "val": []}
     dataset_configs = {}
 

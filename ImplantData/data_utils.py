@@ -10,7 +10,7 @@ import random
 import torch
 
 
-def get_dataset_metadata(data_path, dataset_name, random_seed):
+def get_dataset_metadata(data_path, random_seed=21):
     with open(f'{data_path}/metadata.csv', mode='r', encoding='utf-8') as file:
         reader = csv.DictReader(file)
         rows = list(reader)
@@ -35,11 +35,6 @@ def get_dataset_metadata(data_path, dataset_name, random_seed):
             random.shuffle(data_id)
             train_split = data_id[:round(0.8*len(data_id))]
             val_split = data_id[round(0.8*len(data_id)):]
-        
-        splits_final = {
-            "train": [f"IMPLANT_{dataset_name}_{data_name}" for data_name in train_split], 
-            "val": [f"IMPLANT_{dataset_name}_{data_name}" for data_name in val_split], 
-        }
 
         return metadata, train_split, val_split
 
