@@ -6,6 +6,8 @@ import json
 import numpy as np
 import time
 import SimpleITK as sitk
+import pydicom
+from pydicom.uid import ImplicitVRLittleEndian, CTImageStorage, generate_uid
 from skimage.transform import rescale
 from data_utils import *
 
@@ -93,20 +95,25 @@ def rebuild_nii(dicom, predict, centroid, data_name, result_dir) :
 
 
 def rebuild_dicom(dicom_dir, predict, centroid, data_name, result_dir):
-    # Read DICOM series
-    reader = sitk.ImageSeriesReader()
-    series_ids = reader.GetGDCMSeriesIDs(dicom_dir)
-    if not series_ids:
-        raise RuntimeError("No DICOM series found")
+    # read dicom
+    dicoms = []
+    for f in os.listdir(dicom_dir):
+        if f.endswith(".dcm"):
+            dcm = pydicom.dcmread(os.path.join(dicom_dir, f), force=True)
+            if not hasattr(dcm, "file_meta"):
+                dcm.file_meta = pydicom.dataset.FileMetaDataset()
+            dcm.file_meta.TransferSyntaxUID = ImplicitVRLittleEndian
+            dcm.file_meta.MediaStorageSOPClassUID = CTImageStorage
+            dcm.file_meta.MediaStorageSOPInstanceUID = generate_uid()
+            dcm.file_meta.ImplementationClassUID = generate_uid()
+            dcm.is_little_endian = True
+            dcm.is_implicit_VR = True
+            dicoms.append(dcm)
 
-    filenames = reader.GetGDCMSeriesFileNames(dicom_dir, series_ids[0])
-    reader.SetFileNames(filenames)
-    reader.MetaDataDictionaryArrayUpdateOn()
-    reader.LoadPrivateTagsOn()
-    image = reader.Execute()
-    dcm_3d_array = sitk.GetArrayFromImage(image)
-    max_dicom = np.max(dcm_3d_array)
-
+    dicoms.sort(key=lambda d: float(d.ImagePositionPatient[2]))
+    dicom_image = np.stack([d.pixel_array for d in dicoms]).astype(np.int16)
+    max_dicom = np.max(dicom_image)
+    
     # space transfer
     midx, midy, midz = int(centroid[0]), int(centroid[1]), int(centroid[2])
     patch_size = predict.shape
@@ -116,76 +123,28 @@ def rebuild_dicom(dicom_dir, predict, centroid, data_name, result_dir):
     predict[2] += (midz - patch_size[2] // 2)
     predict = predict.T
     
-    # rebuild dicom
     for p in predict :
-        dcm_3d_array[p[0]][p[1]][p[2]] = max_dicom
-    new_img = sitk.GetImageFromArray(dcm_3d_array)
-    new_img.SetSpacing(image.GetSpacing())
-    # new_img.CopyInformation(image)
+        dicom_image[p[0]][p[1]][p[2]] = max_dicom
 
-    # Write the 3D image as a series
-    writer = sitk.ImageFileWriter()
-    writer.KeepOriginalImageUIDOn()
-
-    modification_time = time.strftime("%H%M%S")
-    modification_date = time.strftime("%Y%m%d")
-
-    # Copy some of the tags and add the relevant tags indicating the change.
-    direction = image.GetDirection()
-    series_tag_values = [
-        ("0008|0031", modification_time),  # Series Time
-        ("0008|0021", modification_date),  # Series Date
-        ("0008|0008", "DERIVED\\SECONDARY"),  # Image Type
-        (
-            "0020|000e",
-            "1.2.826.0.1.3680043.2.1125." + modification_date + ".1" + modification_time,
-        ),  # Series Instance UID
-        (
-            "0020|0037",
-            "\\".join(
-                map(
-                    str,
-                    (
-                        direction[0],
-                        direction[3],
-                        direction[6],
-                        direction[1],
-                        direction[4],
-                        direction[7],
-                    ),
-                )
-            ),
-        ),  # Image Orientation
-        # (Patient)
-        ("0008|103e", "Rebuild DICOM"),  # Series Description
-    ]
-
-    # Write slices to output directory
+    # write dicom
+    new_series_uid = generate_uid()
     os.makedirs(os.path.join(result_dir, "rebuild_dicom", data_name), exist_ok=True)
-    for i in range(new_img.GetDepth()) :
-        image_slice = new_img[:, :, i]
+    for i, dcm in enumerate(dicoms):
+        dcm.PixelData = dicom_image[i].astype(np.int16).tobytes()
+        dcm.Rows, dcm.Columns = dicom_image[i].shape
+        dcm.BitsAllocated = 16
+        dcm.BitsStored = 16
+        dcm.HighBit = 15
+        dcm.PixelRepresentation = 1
+        dcm.SeriesInstanceUID = new_series_uid
+        dcm.SOPInstanceUID = dcm.file_meta.MediaStorageSOPInstanceUID
+        dcm.InstanceNumber = i + 1
+        dcm.ImageType = ["DERIVED", "SECONDARY"]
 
-        # Tags shared by the series.
-        list(
-            map(
-                lambda tag_value: image_slice.SetMetaData(tag_value[0], tag_value[1]),
-                series_tag_values,
-            )
+        dcm.save_as(
+            os.path.join(result_dir, "rebuild_dicom", data_name, f"rebuild_{i:03d}.dcm"),
+            write_like_original=False
         )
-
-        # Slice specific tags.
-        image_slice.SetMetaData("0008|0012", time.strftime("%Y%m%d"))
-        image_slice.SetMetaData("0008|0013", time.strftime("%H%M%S"))
-        image_slice.SetMetaData("0008|0060", "CT")
-        image_slice.SetMetaData(
-            "0020|0032",
-            "\\".join(map(str, new_img.TransformIndexToPhysicalPoint((0, 0, i)))),
-        )
-        image_slice.SetMetaData("0020|0013", str(i))
-
-        # Write to the output directory and add the extension dcm, to force writing in DICOM format.
-        writer.SetFileName(os.path.join(result_dir, "rebuild_dicom", data_name, f"rebuild_{str(i).zfill(3)}.dcm"))
-        writer.Execute(image_slice)
 
 
 if __name__ == '__main__':
