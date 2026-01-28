@@ -50,7 +50,7 @@ def make_dataset(args) :
         if data_name in val_split :
             is_test = True
         
-        dicom = get_dcm_3d_array(cbct_path)
+        dicom, spacing, origin = get_dicom(cbct_path)
         if metadata[data_name]["spacing"] != args.spacing:
             dicom = rescale(dicom, metadata[data_name]["spacing"] / args.spacing, order=1, preserve_range=True)
         cs_upper, cs_lower, cs_front, cs_rear, cs_left, cs_right = get_cross_section(
@@ -60,7 +60,7 @@ def make_dataset(args) :
         cylinders = get_stl(stl_path)
         cylinders = cylinder_transform(
             cylinders, 
-            dicom.shape, 
+            np.array(origin), 
             args.spacing
         )
 

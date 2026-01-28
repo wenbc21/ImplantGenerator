@@ -47,7 +47,7 @@ def image_rebuild(args) :
         data_name = os.path.basename(predict_path[it]).split('.')[0]
         data_id = data_name[-3:]
         dicom_dir = cbct_index[data_id]
-        dicom = get_dcm_3d_array(dicom_dir)
+        dicom, _, _ = get_dicom(dicom_dir)
         dicom = window_transform_3d(dicom, metadata[data_id]["width"], metadata[data_id]["window"]).astype(np.uint8)
         predict = sitk.ReadImage(predict_path[it])
         predict = sitk.GetArrayFromImage(predict)

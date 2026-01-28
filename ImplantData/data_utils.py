@@ -39,13 +39,15 @@ def get_dataset_metadata(data_path, random_seed=21):
         return metadata, train_split, val_split
 
 
-def get_dcm_3d_array(dicom_dir) :
+def get_dicom(dicom_dir) :
     reader = sitk.ImageSeriesReader()
     dicom_names = reader.GetGDCMSeriesFileNames(dicom_dir)
     reader.SetFileNames(dicom_names)
     image = reader.Execute()
     dcm_3d_array = sitk.GetArrayFromImage(image)
-    return dcm_3d_array
+    spacing = image.GetSpacing()
+    origin = image.GetOrigin()
+    return dcm_3d_array, spacing, origin
 
 
 def window_transform_2d(dcm_2d_array, window_width, window_center, normal=False):
@@ -152,26 +154,20 @@ def get_stl(stl_path):
     return cylinders
 
 
-def cylinder_transform(cylinders, world_size, spacing) :
-    def transform_to_world(point, world_size, spacing) :
-        return np.array([
-            world_size[0] * 0.5 + point[2] / spacing,
-            world_size[1] * 0.5 + point[1] / spacing,
-            world_size[2] * 0.5 + point[0] / spacing
-        ])
-    cylinders_tr = []
+def cylinder_transform(cylinders, origin, spacing) :
+    cylinders_vxl = []
     for cylinder_cfg in cylinders :
         upper_center, lower_center, centroid, radius, length, direction = cylinder_cfg
-        upper_center_tr = transform_to_world(upper_center, world_size, spacing)
-        lower_center_tr = transform_to_world(lower_center, world_size, spacing)
-        centroid_tr = transform_to_world(centroid, world_size, spacing)
-        radius_tr = radius / spacing
-        length_tr = np.linalg.norm(upper_center_tr - lower_center_tr, axis=0)
-        direction_tr = (upper_center_tr - lower_center_tr) / length_tr
-        cylinders_tr.append([
-            upper_center_tr, lower_center_tr, centroid_tr, radius_tr, length_tr, direction_tr
+        upper_center_vxl = (upper_center - origin)[::-1] / spacing
+        lower_center_vxl = (lower_center - origin)[::-1] / spacing
+        centroid_vxl = (centroid - origin)[::-1] / spacing
+        radius_vxl = radius / spacing
+        length_vxl = np.linalg.norm(upper_center_vxl - lower_center_vxl, axis=0)
+        direction_vxl = (upper_center_vxl - lower_center_vxl) / length_vxl
+        cylinders_vxl.append([
+            upper_center_vxl, lower_center_vxl, centroid_vxl, radius_vxl, length_vxl, direction_vxl
         ])
-    return cylinders_tr
+    return cylinders_vxl
 
 
 def cylinder_render(center, image_size, direction, length, radius):
